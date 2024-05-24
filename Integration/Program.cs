@@ -12,7 +12,8 @@ public abstract class Program
         ThreadPool.QueueUserWorkItem(_ => service.SaveItem("b"));
         ThreadPool.QueueUserWorkItem(_ => service.SaveItem("c"));
 
-        Thread.Sleep(500);
+        // Removed the Thread.Sleep to run all of them as parallel
+        // Thread.Sleep(500);
 
         ThreadPool.QueueUserWorkItem(_ => service.SaveItem("a"));
         ThreadPool.QueueUserWorkItem(_ => service.SaveItem("b"));
