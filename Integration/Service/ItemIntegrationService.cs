@@ -18,7 +18,7 @@ public sealed class ItemIntegrationService
     // be allowed for performance reasons.
     public Result SaveItem(string itemContent)
     {
-        if (ItemIntegrationBackend.FindItemsWithContent(itemContent).Count != 0 || LocalCache.ContainsKey(itemContent))
+        if (LocalCache.ContainsKey(itemContent) || ItemIntegrationBackend.FindItemsWithContent(itemContent).Count != 0)
         {
             return new Result(false, $"Duplicate item received with content {itemContent}.");
         }
