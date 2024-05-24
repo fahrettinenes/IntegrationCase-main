@@ -1,12 +1,13 @@
-﻿using Integration.Common;
+﻿using System.Collections.Concurrent;
+using Integration.Common;
 using Integration.Backend;
 
 namespace Integration.Service;
 
 public sealed class ItemIntegrationService
 {
-    // Using an external cache service to minimize the ItemIntegrationService class as soon as possible and support the SOLID principles.
-    private readonly CacheService _cacheService = new("localhost");
+    // Using a concurrent dictionary to support multi-threading.
+    private static readonly ConcurrentDictionary<string, bool> LocalCache = new();
 
     //This is a dependency that is normally fulfilled externally.
     private ItemOperationBackend ItemIntegrationBackend { get; set; } = new();
@@ -18,20 +19,17 @@ public sealed class ItemIntegrationService
     // be allowed for performance reasons.
     public Result SaveItem(string itemContent)
     {
-        // Disposing the lock after the flow.
-        using var redlock = _cacheService.CreateLock(itemContent);
 
-        if (ItemIntegrationBackend.FindItemsWithContent(itemContent).Count != 0)
+        if (ItemIntegrationBackend.FindItemsWithContent(itemContent).Count != 0 || LocalCache.ContainsKey(itemContent))
         {
             return new Result(false, $"Duplicate item received with content {itemContent}.");
         }
 
-        if (!redlock.IsAcquired)
-        {
-            return new Result(false, $"Couldn't lock the {itemContent}.");
-        }
+        LocalCache.TryAdd(itemContent, true);
 
         var item = ItemIntegrationBackend.SaveItem(itemContent);
+
+        LocalCache.TryRemove(itemContent, out _);
 
         return new Result(true, $"Item with content {itemContent} saved with id {item.Id}");
     }
