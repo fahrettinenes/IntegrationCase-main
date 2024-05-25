@@ -1,4 +1,3 @@
-﻿using System.Collections.Concurrent;
 using Integration.Common;
 using Integration.Backend;
 
@@ -7,7 +6,7 @@ namespace Integration.Service;
 public sealed class ItemIntegrationService
 {
     // Using a concurrent dictionary to support multi-threading.
-    private static readonly ConcurrentDictionary<string, bool> LocalCache = new();
+    private static readonly HashSet<string> LocalCache = new();
 
     //This is a dependency that is normally fulfilled externally.
     private ItemOperationBackend ItemIntegrationBackend { get; set; } = new();
@@ -18,18 +17,21 @@ public sealed class ItemIntegrationService
     // be allowed for performance reasons.
     public Result SaveItem(string itemContent)
     {
-        if (LocalCache.ContainsKey(itemContent) || ItemIntegrationBackend.FindItemsWithContent(itemContent).Count != 0)
+        lock (itemContent)
         {
-            return new Result(false, $"Duplicate item received with content {itemContent}.");
+            if (LocalCache.Contains(itemContent) || ItemIntegrationBackend.FindItemsWithContent(itemContent).Count != 0)
+            {
+                return new Result(false, $"Duplicate item received with content {itemContent}.");
+            }
+
+            LocalCache.Add(itemContent);
+
+            var item = ItemIntegrationBackend.SaveItem(itemContent);
+
+            LocalCache.Remove(itemContent);
+
+            return new Result(true, $"Item with content {itemContent} saved with id {item.Id}");
         }
-
-        LocalCache.TryAdd(itemContent, true);
-
-        var item = ItemIntegrationBackend.SaveItem(itemContent);
-
-        LocalCache.TryRemove(itemContent, out _);
-
-        return new Result(true, $"Item with content {itemContent} saved with id {item.Id}");
     }
 
     public List<Item> GetAllItems()
