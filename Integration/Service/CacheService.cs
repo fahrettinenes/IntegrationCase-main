@@ -23,6 +23,7 @@ public class CacheService
     public IRedLock CreateLock(string content)
     {
         // 10 seconds of delaying is all up to transaction. In this case, 10 seconds of delay will be enough.
+        // RedLock is adding a prefix for each log automatically, that's why I didn't prefer to create a new prefix.
         return _redlockFactory.CreateLock(content, TimeSpan.FromSeconds(10));
     }
 }
